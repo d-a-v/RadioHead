@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# These files (./SYNC & generic-README.md) have been used to build this git history
+
+download=false
+#download=true
+last=130
+
+mkdir -p RadioHead zip
+
+set -e
+
+(cd RadioHead; [ -d .git ] || git init)
+
+for i in `seq 1 $last`; do
+
+    v=1.$i
+    f=RadioHead-${v}.zip
+    
+    if $download; then
+        if [ ! -r "zip/$f" ]; then
+            echo "$f"
+            (cd zip; wget http://www.airspayce.com/mikem/arduino/RadioHead/"$f") || { echo missing?; true; }
+            sleep 1
+        fi
+    fi
+
+    (
+        cd RadioHead
+        if [ -r ../zip/$f ]; then
+            if ! git tag | grep "^v${v}\$"; then
+                echo tag "v$v" not here
+                rm -rf *
+                unzip ../zip/$f
+                mv RadioHead/* .
+                rmdir RadioHead
+                cp ../generic-README.md README.md
+                mkdir contrib-gitsyncer
+                cp ../SYNC ../generic-README.md contrib-gitsyncer
+                git add .
+                git commit -m "inflated $f"
+                git tag "v$v"
+            fi
+        else
+            echo Not existing: $f
+        fi
+    )
+done
